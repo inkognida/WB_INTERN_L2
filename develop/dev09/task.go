@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/opesun/goquery"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"github.com/opesun/goquery"
 	"strings"
 )
 
@@ -33,6 +33,9 @@ func download(url string) {
 
 	// копируем resp.Body в файл
 	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func files(url string) {
