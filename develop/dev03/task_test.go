@@ -1,115 +1,182 @@
 package main
 
 import (
+	"bytes"
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
 )
 
-func TestRemoveEmptyLines(t *testing.T) {
-	lines := []string{"abc", "", "def", "   ", "ghi"}
-
-	expected := []string{"abc", "def", "ghi"}
-	result := removeEmptyLines(lines)
-
-	if len(result) != len(expected) {
-		t.Errorf("Expected %d lines, but got %d", len(expected), len(result))
+func TestReadLines(t *testing.T) {
+	input := "line1\nline2\nline3\n"
+	expected := []Line{
+		{Text: "line1", Key: "line1"},
+		{Text: "line2", Key: "line2"},
+		{Text: "line3", Key: "line3"},
 	}
+	reader := strings.NewReader(input)
 
-	for i := 0; i < len(result); i++ {
-		if result[i] != expected[i] {
-			t.Errorf("Expected line '%s', but got '%s'", expected[i], result[i])
-		}
+	lines, err := readLines(reader)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-}
-
-func TestSortLines(t *testing.T) {
-	lines := []string{"abc", "def", "ghi", "123", "456", "789"}
-
-	expected := []string{"123", "456", "789", "abc", "def", "ghi"}
-
-	sortLines(lines)
 
 	if len(lines) != len(expected) {
-		t.Errorf("Expected %d lines, but got %d", len(expected), len(lines))
+		t.Fatalf("Unexpected number of lines. Expected: %d, Got: %d", len(expected), len(lines))
 	}
 
-	for i := 0; i < len(lines); i++ {
-		if lines[i] != expected[i] {
-			t.Errorf("Expected line '%s', but got '%s'", expected[i], lines[i])
+	for i, line := range lines {
+		if line.Text != expected[i].Text || line.Key != expected[i].Key {
+			t.Errorf("Unexpected line. Expected: %+v, Got: %+v", expected[i], line)
 		}
 	}
 }
 
-func TestParseNumericValueWithSuffix(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected float64
-	}{
-		{"123", 123},
-		{"1K", 1000},
-		{"2.5K", 2500},
-		{"1M", 1000000},
-		{"0.5M", 500000},
-		{"3B", 3000000000},
-		{"", 0},
+func TestSortLinesKey(t *testing.T) {
+	fullCmd := "sort -k 2 test.txt"
+	cmd := exec.Command("bash", "-c", fullCmd)
+
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	err := cmd.Run()
+	if err != nil {
+		t.Error(err)
 	}
 
-	for _, test := range tests {
-		result := parseNumericValueWithSuffix(test.input)
+	expected := stdout.String()
 
-		if result != test.expected {
-			t.Errorf("Expected value %f, but got %f", test.expected, result)
-		}
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+
+	lines, err := readLines(file)
+	sorted := sortLines(lines, 2, false, false, false)
+
+	var res string
+	for _, v := range sorted {
+		res += v.Text + "\n"
+	}
+
+	if len(res) != len(expected) {
+		t.Fatalf("Unexpected number of lines. Expected: %d, Got: %d", len(expected), len(sorted))
+	}
+
+	if res != expected {
+		t.Fatalf("Unexpected compare %v \n %v", res, expected)
 	}
 }
 
-func TestReverse(t *testing.T) {
-	lines := []string{"abc", "def", "ghi"}
+func TestReverseLines(t *testing.T) {
+	fullCmd := "sort -r test.txt"
+	cmd := exec.Command("bash", "-c", fullCmd)
 
-	expected := []string{"ghi", "def", "abc"}
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
 
-	reverse(lines)
-
-	if len(lines) != len(expected) {
-		t.Errorf("Expected %d lines, but got %d", len(expected), len(lines))
+	err := cmd.Run()
+	if err != nil {
+		t.Error(err)
 	}
 
-	for i := 0; i < len(lines); i++ {
-		if lines[i] != expected[i] {
-			t.Errorf("Expected line '%s', but got '%s'", expected[i], lines[i])
-		}
+	expected := stdout.String()
+
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+
+	lines, err := readLines(file)
+	sorted := sortLines(lines, 1, false, true, false)
+
+	var res string
+	for _, v := range sorted {
+		res += v.Text + "\n"
+	}
+
+	if len(res) != len(expected) {
+		t.Fatalf("Unexpected number of lines. Expected: %d, Got: %d", len(expected), len(sorted))
+	}
+
+	if res != expected {
+		t.Fatalf("Unexpected compare %v \n %v", res, expected)
 	}
 }
 
 func TestRemoveDuplicates(t *testing.T) {
-	lines := []string{"abc", "def", "ghi", "abc", "def"}
+	fullCmd := "sort -u test.txt"
+	cmd := exec.Command("bash", "-c", fullCmd)
 
-	expected := []string{"abc", "def", "ghi"}
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
 
-	result := removeDuplicates(lines)
-
-	if len(result) != len(expected) {
-		t.Errorf("Expected %d lines, but got %d", len(expected), len(result))
+	err := cmd.Run()
+	if err != nil {
+		t.Error(err)
 	}
 
-	for i := 0; i < len(result); i++ {
-		if result[i] != expected[i] {
-			t.Errorf("Expected line '%s', but got '%s'", expected[i], result[i])
-		}
+	expected := stdout.String()
+
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+
+	lines, err := readLines(file)
+	sorted := sortLines(lines, 1, false, false, true)
+
+	var res string
+	for _, v := range sorted {
+		res += v.Text + "\n"
+	}
+
+	if len(res) != len(expected) {
+		t.Fatalf("Unexpected number of lines. Expected: %d, Got: %d", len(expected), len(sorted))
+	}
+
+	if res != expected {
+		t.Fatalf("Unexpected compare %v \n %v", res, expected)
 	}
 }
 
-func TestIsSorted(t *testing.T) {
-	lines := []string{"abc", "def", "ghi"}
+func TestNumerical(t *testing.T) {
+	fullCmd := "sort -n test.txt"
+	cmd := exec.Command("bash", "-c", fullCmd)
 
-	if isSorted(lines) {
-		t.Error("Expected lines to be unsorted, but they are sorted")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	err := cmd.Run()
+	if err != nil {
+		t.Error(err)
 	}
 
-	sortLines(lines)
+	expected := stdout.String()
 
-	if !isSorted(lines) {
-		t.Error("Expected lines to be sorted, but they are unsorted")
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+
+	lines, err := readLines(file)
+	sorted := sortLines(lines, 1, true, false, false)
+
+	var res string
+	for _, v := range sorted {
+		res += v.Text + "\n"
+	}
+
+	if len(res) != len(expected) {
+		t.Fatalf("Unexpected number of lines. Expected: %d, Got: %d", len(expected), len(sorted))
+	}
+
+	if res != expected {
+		t.Fatalf("Unexpected compare %v \n %v", res, expected)
 	}
 }
-
-
